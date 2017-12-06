@@ -19,17 +19,27 @@ class BrainMask(object):
 
     @trackcalls
     def segmentation(self):
-        bw_mask2 = self.threshold(input_array=self.original, threshold_value=1000)
-        mf_grad2 = sk.remove_small_objects(ar=bw_mask2, min_size=10000)
+        print("segmentation --> the shape is ={}".format(self.original.shape))
 
+        # plt.imshow(self.original[252, :, :])
+        # plt.show()
+        bw_mask2 = self.threshold(input_array=self.original, threshold_value=1200)
+        # plt.imshow(bw_mask2[252, :, :])
+        mf_grad2 = sk.remove_small_objects(ar=bw_mask2, min_size=10000)
+        # plt.show()
         # Dilation
         dilation_volume_bw = self.volume_dilation(vol=mf_grad2, size_of_str_elem=3)
-
+        # plt.imshow(dilation_volume_bw[252, :, :])
+        # plt.show()
         # Open
         opening_volume_bw = self.volume_opening(vol=dilation_volume_bw, size_of_str_elem=2)
-
+        # plt.imshow(opening_volume_bw[252, :, :])
+        # plt.show()
         # Dilation
         dilation_volume_bw2 = self.volume_dilation(vol=opening_volume_bw, size_of_str_elem=3)
+        # plt.imshow(dilation_volume_bw2[252, :, :])
+        # plt.show()
+
 
         final_mask = self.give_padding(self.covex_hull_mask(dilation_volume_bw2))
         return final_mask.astype(int)

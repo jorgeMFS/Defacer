@@ -37,7 +37,7 @@ class NeuroImage(object):
         os.chdir(self.path_file)
         self.neuro_image_array, options = nrrd.read(self.filename)
 
-    def save_as_original_as_nifty(self, name,save_path='/home/mikejpeg/IdeaProjects/Defacer/image/results'):
+    def save_as_original_as_nifty(self, name,save_path='/home/mikejpeg/IdeaProjects/Defacer/image/results/'):
         os.chdir(save_path)
         save_img = nib.Nifti1Image(self.neuro_image_array, affine=np.eye(4))
         nib.save(save_img, filename=name)
