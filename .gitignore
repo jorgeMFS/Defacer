@@ -105,3 +105,9 @@ ENV/
 
 #iml
 Defacer.iml
+
+#images
+images/
+./images/
+/images/
+
