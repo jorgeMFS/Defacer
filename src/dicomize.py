@@ -50,20 +50,20 @@ def write_dicom(pixel_array,dcm_name):
 def create_multiple_files(array,string_file_name):
     index = np.where(array.shape == np.min(array.shape))[0]
     if index == 0:
-        for it in range(np.max(array.shape)):
+        for it in range(np.min(array.shape)):
             px_array = array[it, :, :]
-            ss = string_file_name + '_' + str(it)
+            ss = string_file_name + '_' + str(it) + '.dcm'
             write_dicom(pixel_array=px_array,dcm_name=ss)
     if index == 1:
         print(np.max(array.shape))
-        for it in range(np.max(array.shape)):
+        for it in range(np.min(array.shape)):
             px_array = array[:, it, :]
-            ss = string_file_name + '_' + str(it)
+            ss = string_file_name + '_' + str(it) + '.dcm'
             write_dicom(pixel_array=px_array, dcm_name=ss)
     if index == 2:
-        for it in range(np.max(array.shape)):
+        for it in range(np.min(array.shape)):
             px_array = array[:, :, it]
-            ss = string_file_name + '_' + str(it)
+            ss = string_file_name + '_' + str(it) + '.dcm'
             write_dicom(pixel_array=px_array, dcm_name=ss)
 
 
