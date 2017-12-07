@@ -2,6 +2,7 @@ import skimage.morphology as sk
 import numpy as np
 from skimage.morphology import convex_hull_image
 from src.auxfun import trackcalls
+import matplotlib.pyplot as plt
 
 
 class BrainMask(object):
@@ -23,7 +24,7 @@ class BrainMask(object):
 
         # plt.imshow(self.original[252, :, :])
         # plt.show()
-        bw_mask2 = self.threshold(input_array=self.original, threshold_value=1200)
+        bw_mask2 = self.threshold(input_array=self.original, threshold_value=1150)
         # plt.imshow(bw_mask2[252, :, :])
         mf_grad2 = sk.remove_small_objects(ar=bw_mask2, min_size=10000)
         # plt.show()
@@ -37,18 +38,21 @@ class BrainMask(object):
         # plt.show()
         # Dilation
         dilation_volume_bw2 = self.volume_dilation(vol=opening_volume_bw, size_of_str_elem=3)
+
         # plt.imshow(dilation_volume_bw2[252, :, :])
         # plt.show()
 
-
-        final_mask = self.give_padding(self.covex_hull_mask(dilation_volume_bw2))
+        convex_hull_erroded = self.covex_hull_mask(dilation_volume_bw2)
+        final_mask = self.give_padding(convex_hull_erroded)
         return final_mask.astype(int)
 
     def covex_hull_mask(self, binary_3Darray):
         final_hull_mask = np.empty(self.original.shape)
         for ind in range(binary_3Darray.shape[2]):
             if True in binary_3Darray[:, :, ind]:
-                final_hull_mask[:, :, ind] = convex_hull_image(binary_3Darray[:, :, ind] == 1)
+                chi = convex_hull_image(binary_3Darray[:, :, ind] == 1)
+                final_hull_mask[:, :, ind] = self.image_erode(image=chi,size_of_str_elem=10)
+
             else:
                 final_hull_mask[:, :, ind]= np.zeros(binary_3Darray[:, :, ind].shape)
         return final_hull_mask
@@ -65,6 +69,10 @@ class BrainMask(object):
     def volume_opening(self, vol, size_of_str_elem):
         elem = sk.ball(size_of_str_elem)
         return sk.binary_opening(image=vol, selem=elem)
+
+    def image_erode(self, image, size_of_str_elem):
+        elem = sk.disk(size_of_str_elem)
+        return sk.binary_erosion(image=image, selem=elem)
 
     def give_padding(self, array):
         array[1, :, :] = 0

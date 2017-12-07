@@ -56,7 +56,7 @@ def restructure_array(array):
 
 if __name__ == '__main__':
     filename_path = '/home/mikejpeg/IdeaProjects/Defacer/image/test_images'
-    file_name = 'img.nrrd'
+    file_name = 'img4.nrrd'
     neuro_array = NeuroImage(path_file=filename_path, filename=file_name)
     nd = neuro_array.get_ndarray()
     print(type(nd))

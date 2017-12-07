@@ -8,6 +8,7 @@ from src.Viewer.SagitalView import SagitalView
 from src.Viewer.CoronalView import CoronalView
 import nibabel as nib
 import matplotlib.pyplot as plt
+from src.dicomize import create_multiple_files,ch_directory
 
 def edge_mask(mask):
     """ Find the edges of a mask or masked image
@@ -56,18 +57,18 @@ def convex_hull(brain):
     def cross(o, a, b):
         return np.cross(a - o, b - o)
 
-    x_list = []
-    y_list = []
+    # x_list = []
+    # y_list = []
     lower = []
     for p in pts:
         while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
             lower.pop()
         lower.append(p)
-        # x = p[0]
-        # y = p[1]
-        #
-    #     x_list.append(x)
-    #     y_list.append(y)
+    #     x = p[0]
+    #     y = p[1]
+    #
+    #     # x_list.append(x)
+    #     # y_list.append(y)
     # # print("x_list length= {}".format(x_list.__len__()))
     # # print("y_list length= {}".format(y_list.__len__()))
     #
@@ -132,7 +133,7 @@ def orient_xPS(img, hemi='R'):
     return flip_axes(img.get_data(), inv_perm, flips), perm, flips[perm]
 
 
-def quickshear(anat_img, mask_img, buff=5):
+def quickshear(anat_img, mask_img, buff=10):
     """ Deface image using Quickshear algorithm
 
     Parameters
@@ -154,27 +155,39 @@ def quickshear(anat_img, mask_img, buff=5):
     mask, mask_perm, mask_flip = orient_xPS(mask_img)
 
     edgemask = edge_mask(mask)
-
-
-
     low = convex_hull(edgemask)
-    print(low)
-    xdiffs, ydiffs = np.diff(low)
-    slope = ydiffs[0] / xdiffs[0]
 
-    yint = low[1][0] - (low[0][0] * slope) - buff
-    ys = np.arange(0, mask.shape[2]) * slope + yint
+    x_min = np.min(low[1])
+    index = np.where(low[1] == x_min)
+    index = index[0][0]
+    y_min = low[0][index]
+    y0 = low[0][0]
+    x0 = low[1][0]
+    slope = (y_min - y0 ) / (x_min - x0 - buff)
+    # b = y - mx
+    yint = low[1][0] - (low[0][0] * slope)
+    ys = np.arange(0, mask.shape[1]) * slope + yint
     defaced_mask = np.ones(mask.shape, dtype='bool')
 
     for x, y in zip(np.nonzero(ys > 0)[0], ys.astype(int)):
             defaced_mask[:, x, :y] = 0
-    print("ys.astype(int)  = {}".format(ys.astype(int)))
-    print("ys.astype(int)  = {}".format(ys.astype(int)))
+
     print("defaced_mask shape  = {}".format(defaced_mask.shape))
+
+
+    # fig, ax = plt.subplots()
+    # plt.imshow(anat[256, :, :], cmap='gray')
+    # plt.imshow(mask[256, :, :], cmap='jet', alpha=0.5)
+    # plt.imshow(defaced_mask[256, :, :], cmap='jet', alpha=0.5)
+    # ax.invert_yaxis()
+    # ax.xaxis.tick_top()
+    # plt.plot(163,0, 'o')
+    # plt.show()
 
     return anat_img.__class__(
         flip_axes(defaced_mask * anat, anat_perm, anat_flip),
         anat_img.affine, anat_img.header)
+
 
 def main1():
     logger = logging.getLogger(__name__)
@@ -220,7 +233,8 @@ def main():
 
     #file image path
     filename_path = '.././image/test_images/'
-    file_name = 'img.nrrd'
+    file_name = 'img2.nrrd'
+    save_path = '/home/mikejpeg/IdeaProjects/Defacer/image/results/dicom'
 
     # Creating NeuroImageObject and getting array.
     neuro_array = NeuroImage(path_file=filename_path, filename=file_name)
@@ -235,7 +249,7 @@ def main():
     anat_img = np.swapaxes(anat_img, 1, 2)
     mask_img = np.swapaxes(mask_img, 1, 2)
 
-    #Transforming into Nibabel file
+    # Transforming into Nibabel file
     mask_img = nib.Nifti1Image(mask_img, affine=np.eye(4))
     anat_img = nib.Nifti1Image(anat_img, affine=np.eye(4))
 
@@ -246,9 +260,11 @@ def main():
 
     new_anat = quickshear(anat_img, mask_img)
     new_anat = new_anat.get_data()
-    SagitalView(new_anat)
+    #SagitalView(new_anat)
     # CoronalView(new_anat)
-    #new_anat.to_filename('test_quickshear')
+    # new_anat.to_filename('test_quickshear')
+    ch_directory(save_path)
+    create_multiple_files(new_anat,'tester')
 
 
 if __name__ == '__main__':
