@@ -1,8 +1,9 @@
 # Defacer
-Defacer is a DICOM neuroimage face anonymizer implementation in python.
+Defacer is a DICOM Neuroimage face anonymizer implementation in python.
 
 ## Content:
-- Defacer code
+- Brain Mask Creator 
+- Defacer Code
 
 ## Author:
 
