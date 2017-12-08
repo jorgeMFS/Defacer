@@ -1,9 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.widgets as wid
+import numpy as np
 
 
-def SagitalView(array):
+def sagital_view(array):
 
     final_volume = array
     final_volume =np.swapaxes(final_volume, 2,1)
@@ -18,7 +18,7 @@ def SagitalView(array):
 
     fig, ax = plt.subplots(1, 1)
     axcolor = 'lightgoldenrodyellow'
-    axSlice = plt.axes([0.2, 0.05, 0.6, 0.03], axisbg=axcolor )
+    axSlice = plt.axes([0.2, 0.05, 0.6, 0.03], facecolor=axcolor)
     sliceSlider = wid.Slider(axSlice, 'Slice', 0, final_volume.shape[0]-1, valinit=int((final_volume.shape[0]/2)))
 
     class IndexTracker(object):

@@ -1,8 +1,8 @@
-import skimage.morphology as sk
 import numpy as np
+import skimage.morphology as sk
 from skimage.morphology import convex_hull_image
-from src.auxfun import trackcalls
-import matplotlib.pyplot as plt
+
+from src.Auxiliar.auxfun import trackcalls
 
 
 class BrainMask(object):
@@ -46,35 +46,40 @@ class BrainMask(object):
         final_mask = self.give_padding(convex_hull_erroded)
         return final_mask.astype(int)
 
-    def covex_hull_mask(self, binary_3Darray):
+    def covex_hull_mask(self, binary_3d_array):
         final_hull_mask = np.empty(self.original.shape)
-        for ind in range(binary_3Darray.shape[2]):
-            if True in binary_3Darray[:, :, ind]:
-                chi = convex_hull_image(binary_3Darray[:, :, ind] == 1)
-                final_hull_mask[:, :, ind] = self.image_erode(image=chi,size_of_str_elem=10)
+        for ind in range(binary_3d_array.shape[2]):
+            if True in binary_3d_array[:, :, ind]:
+                chi = convex_hull_image(binary_3d_array[:, :, ind] == 1)
+                final_hull_mask[:, :, ind] = self.image_erode(image=chi, size_of_str_elem=10)
 
             else:
-                final_hull_mask[:, :, ind]= np.zeros(binary_3Darray[:, :, ind].shape)
+                final_hull_mask[:, :, ind] = np.zeros(binary_3d_array[:, :, ind].shape)
         return final_hull_mask
 
-    def threshold(self, input_array, threshold_value):
+    @staticmethod
+    def threshold(input_array, threshold_value):
         one = np.ones(input_array.shape)
         zero = np.zeros(input_array.shape)
         return np.where(input_array > threshold_value, one, zero).astype(dtype=bool)
 
-    def volume_dilation(self, vol, size_of_str_elem):
+    @staticmethod
+    def volume_dilation(vol, size_of_str_elem):
         str_elem = sk.ball(size_of_str_elem)
         return sk.binary_dilation(image=vol, selem=str_elem)
 
-    def volume_opening(self, vol, size_of_str_elem):
+    @staticmethod
+    def volume_opening(vol, size_of_str_elem):
         elem = sk.ball(size_of_str_elem)
         return sk.binary_opening(image=vol, selem=elem)
 
-    def image_erode(self, image, size_of_str_elem):
+    @staticmethod
+    def image_erode(image, size_of_str_elem):
         elem = sk.disk(size_of_str_elem)
         return sk.binary_erosion(image=image, selem=elem)
 
-    def give_padding(self, array):
+    @staticmethod
+    def give_padding(array):
         array[1, :, :] = 0
         array[-1, :, :] = 0
         array[:, 1, :] = 0
@@ -82,4 +87,3 @@ class BrainMask(object):
         array[:, :, 1] = 0
         array[:, :, -1] = 0
         return array
-

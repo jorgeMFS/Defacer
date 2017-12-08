@@ -1,14 +1,16 @@
-import sys
 import argparse
-import numpy as np
-import nibabel as nb
 import logging
-from src.NeuroImage import NeuroImage
-from src.Viewer.SagitalView import SagitalView
-from src.Viewer.CoronalView import CoronalView
-import nibabel as nib
+import sys
+
 import matplotlib.pyplot as plt
-from src.dicomize import create_multiple_files,ch_directory
+import nibabel as nib
+import numpy as np
+
+from src.ImageProcessing.NeuroImage import NeuroImage
+from src.Viewer.CoronalView import coronal_view
+from src.Viewer.SagitalView import sagital_view
+from src.WRFiles.FileWriter import FileWriter
+
 
 def edge_mask(mask):
     """ Find the edges of a mask or masked image
@@ -101,11 +103,11 @@ def flip_axes(data, perms, flips):
     """
     data = np.transpose(data, perms)
     for axis in np.nonzero(flips)[0]:
-        data = nb.orientations.flip_axis(data, axis)
+        data = nib.orientations.flip_axis(data, axis)
     return data
 
 
-def orient_xPS(img, hemi='R'):
+def orient_xps(img, hemi='R'):
     """ Set image orientation to RPS or LPS
 
     Parameters
@@ -124,7 +126,7 @@ def orient_xPS(img, hemi='R'):
     flips : (3,) sequence of bools
         Sequence of indicators of axes flipped
     """
-    axes = nb.orientations.aff2axcodes(img.affine)
+    axes = nib.orientations.aff2axcodes(img.affine)
     perm = ['RASLPI'.index(axis) % 3 for axis in axes]
     inv_perm = np.argsort(perm)
     # Flips are in RPS order
@@ -133,26 +135,27 @@ def orient_xPS(img, hemi='R'):
     return flip_axes(img.get_data(), inv_perm, flips), perm, flips[perm]
 
 
-def quickshear(anat_img, mask_img, buff=10):
+def quickshear(original, mask, buff=10, observe=False):
     """ Deface image using Quickshear algorithm
 
     Parameters
     ----------
-    anat_img : SpatialImage
+    original : SpatialImage
         Nibabel image of anatomical scan, to be defaced
-    mask_img : SpatialImage
+    mask : SpatialImage
         Nibabel image of skull-stripped brain mask or masked anatomical
     buff : int
         Distance from mask to set shearing plane
-
+    observe: bool
+        Observe or not plots
     Returns
     -------
     SpatialImage
         Nibabel image of defaced anatomical scan
     """
 
-    anat, anat_perm, anat_flip = orient_xPS(anat_img)
-    mask, mask_perm, mask_flip = orient_xPS(mask_img)
+    anat, anat_perm, anat_flip = orient_xps(original)
+    mask, mask_perm, mask_flip = orient_xps(mask)
 
     edgemask = edge_mask(mask)
     low = convex_hull(edgemask)
@@ -163,87 +166,76 @@ def quickshear(anat_img, mask_img, buff=10):
     y_min = low[0][index]
     y0 = low[0][0]
     x0 = low[1][0]
-    slope = (y_min - y0 ) / (x_min - x0 - buff)
+    slope = (y_min - y0) / (x_min - x0 - buff)
     # b = y - mx
     yint = low[1][0] - (low[0][0] * slope)
     ys = np.arange(0, mask.shape[1]) * slope + yint
     defaced_mask = np.ones(mask.shape, dtype='bool')
 
     for x, y in zip(np.nonzero(ys > 0)[0], ys.astype(int)):
-            defaced_mask[:, x, :y] = 0
+        defaced_mask[:, x, :y] = 0
 
     print("defaced_mask shape  = {}".format(defaced_mask.shape))
 
-
-    # fig, ax = plt.subplots()
-    # plt.imshow(anat[256, :, :], cmap='gray')
-    # plt.imshow(mask[256, :, :], cmap='jet', alpha=0.5)
-    # plt.imshow(defaced_mask[256, :, :], cmap='jet', alpha=0.5)
-    # ax.invert_yaxis()
-    # ax.xaxis.tick_top()
-    # plt.plot(163,0, 'o')
-    # plt.show()
+    if observe:
+        fig, ax = plt.subplots()
+        plt.imshow(anat[256, :, :], cmap='gray')
+        plt.imshow(mask[256, :, :], cmap='jet', alpha=0.5)
+        plt.imshow(defaced_mask[256, :, :], cmap='jet', alpha=0.5)
+        ax.invert_yaxis()
+        ax.xaxis.tick_top()
+        plt.plot(163, 0, 'o')
+        plt.show()
 
     return anat_img.__class__(
         flip_axes(defaced_mask * anat, anat_perm, anat_flip),
         anat_img.affine, anat_img.header)
 
 
-def main1():
+def main(observe=False):
+    global anat_img
+    global mask_img
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     logger.addHandler(ch)
 
+    filename_path = '/home/mikejpeg/IdeaProjects/Defacer/image/test_images/img2.nrrd'
+    save_file_name = '/home/mikejpeg/IdeaProjects/Defacer/image/results/dicom/tester.dcm'
+
     parser = argparse.ArgumentParser(
-        description='Quickshear defacing for neuroimages',
+        description='defacer for neuroimages',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('anat_file', type=str,
-                        help="filename of neuroimage to deface")
-    parser.add_argument('mask_file', type=str,
-                        help="filename of brain mask")
-    parser.add_argument('defaced_file', type=str,
-                        help="filename of defaced output image")
-    parser.add_argument('buffer', type=float, nargs='?', default=10.0,
-                        help="buffer size (in voxels) between shearing plane "
-                             "and the brain")
+    parser.add_argument('anat_file', type=str, nargs='?', default=filename_path,
+                        help="full path with filename of neuroimage to deface")
+    parser.add_argument('mask_file', type=str, nargs='?', default="",
+                        help="full path with filename of brain mask")
+    parser.add_argument('defaced_file', type=str, nargs='?', default=save_file_name,
+                        help="full path with filename of defaced output image")
 
     opts = parser.parse_args()
 
-    anat_img = nb.load(opts.anat_file)
-    mask_img = nb.load(opts.mask_file)
+    if opts.anat_file != filename_path:
+        if opts.mask_file != "":
+            anat_img = nib.load(opts.anat_file)
+            mask_img = nib.load(opts.mask_file)
 
-    if anat_img.shape != mask_img.shape:
-        logger.warning(
-            "Anatomical and mask images do not have the same dimensions.")
-        return -1
+        else:
+            neuro_array = NeuroImage(absolute_path=opts.anat_file)
+            anat_img = neuro_array.get_ndarray()
+            mask_img = neuro_array.get_neuromask()
 
-    new_anat = quickshear(anat_img, mask_img, opts.buffer)
-    new_anat.to_filename(opts.defaced_file)
-    logger.info("Defaced file: {0}".format(opts.defaced_file))
+    elif opts.anat_file == filename_path:
 
+        # Creating NeuroImageObject and getting array.
+        neuro_array = NeuroImage(absolute_path=opts.anat_file)
+        anat_img = neuro_array.get_ndarray()
+        mask_img = neuro_array.get_neuromask()
 
-def main():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
-
-    #file image path
-    filename_path = '.././image/test_images/'
-    file_name = 'img2.nrrd'
-    save_path = '/home/mikejpeg/IdeaProjects/Defacer/image/results/dicom'
-
-    # Creating NeuroImageObject and getting array.
-    neuro_array = NeuroImage(path_file=filename_path, filename=file_name)
-    anat_img = neuro_array.get_ndarray()
-    mask_img = neuro_array.get_neuromask()
-
-    # Visualizing mask and volume
-    # SagitalView(mask_img)
-    # SagitalView(anat_img)
+        if observe:  # Visualizing mask and volume
+            sagital_view(mask_img)
+            sagital_view(anat_img)
 
     # Changing axis to allow for correct defacing
     anat_img = np.swapaxes(anat_img, 1, 2)
@@ -259,12 +251,19 @@ def main():
         return -1
 
     new_anat = quickshear(anat_img, mask_img)
+    new_anat.to_filename('/home/mikejpeg/IdeaProjects/Defacer/image/results/test.nii')
     new_anat = new_anat.get_data()
-    #SagitalView(new_anat)
-    # CoronalView(new_anat)
-    # new_anat.to_filename('test_quickshear')
-    ch_directory(save_path)
-    create_multiple_files(new_anat,'tester')
+    if observe:
+        sagital_view(new_anat)
+        coronal_view(new_anat)
+
+    if opts.defaced_file != save_file_name:
+        FileWriter(file_name_path=opts.defaced_file, np_array=new_anat)
+    else:
+        FileWriter(file_name_path=save_file_name, np_array=new_anat)
+
+    logger.info("Defaced file: {0}".format(opts.defaced_file))
+    return 0
 
 
 if __name__ == '__main__':

@@ -1,20 +1,20 @@
-import nrrd
 import os
-import numpy as np
+
 import nibabel as nib
-from src.Viewer.SagitalView import SagitalView
-from src.Viewer.CoronalView import CoronalView
-from src.BrainMask import BrainMask
+import numpy as np
 import skimage.morphology as sk
-from src.auxfun import trackcalls
+
+from src.Auxiliar.auxfun import trackcalls
+from src.ImageProcessing.BrainMask import BrainMask
+from src.Viewer.CoronalView import coronal_view
+from src.Viewer.SagitalView import sagital_view
+from src.WRFiles.FileReader import FileReader
 
 
 class NeuroImage(object):
-    def __init__(self, path_file, filename):
-        self.filename = filename
-        self.path_file = path_file
-        self.nrrd_reader()
-        self.brain_mask =self.create_brain_mask()
+    def __init__(self, absolute_path):
+        self.neuro_image_array = FileReader(absolute_path).get_array()
+        self.brain_mask = self.create_brain_mask()
 
     def get_ndarray(self):
         return self.neuro_image_array
@@ -33,9 +33,6 @@ class NeuroImage(object):
         vascular_structure = np.multiply(bw_volume, bw_volume_mask)
         return sk.remove_small_objects(ar=vascular_structure, min_size=size_of_filtered_particles)
 
-    def nrrd_reader(self):
-        os.chdir(self.path_file)
-        self.neuro_image_array, options = nrrd.read(self.filename)
 
     def save_as_original_as_nifty(self, name,save_path='/home/mikejpeg/IdeaProjects/Defacer/image/results/'):
         os.chdir(save_path)
@@ -55,9 +52,8 @@ def restructure_array(array):
 
 
 if __name__ == '__main__':
-    filename_path = '/home/mikejpeg/IdeaProjects/Defacer/image/test_images'
-    file_name = 'img4.nrrd'
-    neuro_array = NeuroImage(path_file=filename_path, filename=file_name)
+    filename_path = '/home/mikejpeg/IdeaProjects/Defacer/image/test_images/img4.nrrd'
+    neuro_array = NeuroImage(absolute_path=filename_path)
     nd = neuro_array.get_ndarray()
     print(type(nd))
     print(nd.shape)
@@ -66,8 +62,8 @@ if __name__ == '__main__':
     brain_mask = neuro_array.get_neuromask()
     print(type(brain_mask))
     print(brain_mask.shape)
-    SagitalView(brain_mask)
-    CoronalView(brain_mask)
+    sagital_view(brain_mask)
+    coronal_view(brain_mask)
 
     # neuro_array.save_mask_as_nifty(name="test1")
     # os.chdir("/home/mikejpeg/IdeaProjects/Defacer/image/results/")
