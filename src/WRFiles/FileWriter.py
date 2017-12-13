@@ -93,23 +93,23 @@ class FileWriter(object):
     def create_multiple_files(self):
 
         array = self.np_array
-        _, string_file_name = os.path.splitext(self.save_file_name)
+        string_file_name, file_extension = os.path.splitext(self.save_file_name)
         index = np.where(array.shape == np.min(array.shape))[0]
         if index == 0:
             for it in range(np.min(array.shape)):
                 px_array = array[it, :, :]
-                ss = string_file_name + '_' + str(it) + '.dcm'
+                ss = string_file_name + '_' + str(it) + file_extension
                 self.write_dicom(pixel_array=px_array, dcm_name=ss)
         if index == 1:
             print(np.max(array.shape))
             for it in range(np.min(array.shape)):
                 px_array = array[:, it, :]
-                ss = string_file_name + '_' + str(it) + '.dcm'
+                ss = string_file_name + '_' + str(it) + file_extension
                 self.write_dicom(pixel_array=px_array, dcm_name=ss)
         if index == 2:
             for it in range(np.min(array.shape)):
                 px_array = array[:, :, it]
-                ss = string_file_name + '_' + str(it) + '.dcm'
+                ss = string_file_name + '_' + str(it) + file_extension
                 self.write_dicom(pixel_array=px_array, dcm_name=ss)
 
 

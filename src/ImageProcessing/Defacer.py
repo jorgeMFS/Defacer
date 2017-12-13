@@ -10,7 +10,7 @@ from src.ImageProcessing.NeuroImage import NeuroImage
 from src.Viewer.CoronalView import coronal_view
 from src.Viewer.SagitalView import sagital_view
 from src.WRFiles.FileWriter import FileWriter
-
+import os
 
 def edge_mask(mask):
     """ Find the edges of a mask or masked image
@@ -187,9 +187,31 @@ def quickshear(original, mask, buff=10, observe=False):
         plt.plot(163, 0, 'o')
         plt.show()
 
-    return anat_img.__class__(
+    return original.__class__(
         flip_axes(defaced_mask * anat, anat_perm, anat_flip),
-        anat_img.affine, anat_img.header)
+        original.affine, original.header)
+
+
+def defacer(absolute_file_path_received):
+
+    # Create NeuroImage Mask
+    neuro_array = NeuroImage(absolute_path=absolute_file_path_received)
+    img = neuro_array.get_ndarray()
+    mask = neuro_array.get_neuromask()
+
+    # Quickshear
+    mask_nib = nib.Nifti1Image(mask, affine=np.eye(4))
+    anat_nib = nib.Nifti1Image(img, affine=np.eye(4))
+    quick = quickshear(anat_nib, mask_nib)
+    defaced_array = quick.get_data()
+
+    # Save
+    _, filename = os.path.split(absolute_file_path_received)
+    name, file_extension = os.path.splitext(filename)
+    defaced_filename = name + "_defaced" + '.nii'
+    save_file_name = os.path.join('/home/mikejpeg/IdeaProjects/Defacer/src/Webservices/tmp/', defaced_filename)
+    FileWriter(file_name_path=save_file_name, np_array=defaced_array)
+    return save_file_name
 
 
 def main(observe=False):
