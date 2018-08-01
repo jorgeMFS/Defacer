@@ -64,9 +64,3 @@ if __name__ == '__main__':
     print(brain_mask.shape)
     sagital_view(brain_mask)
     coronal_view(brain_mask)
-
-    # neuro_array.save_mask_as_nifty(name="test1")
-    # os.chdir("/home/mikejpeg/IdeaProjects/Defacer/image/results/")
-    # a = nib.load("test1.nii")
-    # print(a.shape)
-    # print(a.get_data_dtype())
